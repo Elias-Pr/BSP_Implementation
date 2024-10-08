@@ -2,10 +2,42 @@ using System;
 using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.Tilemaps;
+using UnityEngine.UIElements;
 using Random = System.Random;
 
 public class BspImplementation : MonoBehaviour
 {
+    /*fred implementation => S I M P L E
+     
+     [SerializeField] private Vector2Int size;
+
+    [ContextMenu("Launch")]
+    private void Launch()
+    {
+        Room startRoom = new Room(Vector2Int.zero, size);
+    }
+
+
+    int BinarySpatialPartionning(int width, int height)
+    { 
+        bool cutWidth = Random.value > 0.5f;
+        float cutPercent = Random.Range(0f, 1f);
+        int cutValue;
+        if (cutWidth)
+        {
+            cutValue = Mathf.RoundToInt(width * cutPercent);
+        }
+        else
+        {
+            cutValue = Mathf.RoundToInt(height * cutPercent);
+        }
+        return cutValue;
+    }
+     
+     */
+
+    
+    
     // VISUAL VARIABLES
     public Tile emptyTile;
     public Tile filledTile;
@@ -21,6 +53,10 @@ public class BspImplementation : MonoBehaviour
     public int cols;
 
     // BSP VARIABLES
+    
+    public Room[,] rooms;
+    public Room currentRoom;
+    
     public int seed;
     public int cutNumber;
 
@@ -60,15 +96,9 @@ public class BspImplementation : MonoBehaviour
 
     public void BspLaunch(int cuts)
     {
-        while (_currentCut < cuts)
+        if (_currentCut < cuts)
         {
             Vector2Int largestRoom = FindLargestRoom(currentMinRow, currentMaxRow, currentMinCol, currentMaxCol);
-
-            if (largestRoom == Vector2Int.one * -1)
-                break;
-
-            int row = largestRoom.x;
-            int col = largestRoom.y;
 
             bool cutHorizontal = (rows > cols) || (UnityEngine.Random.value > 0.5f);
             int cutPosition;
@@ -95,7 +125,9 @@ public class BspImplementation : MonoBehaviour
             }
 
             _currentCut++;
+            BspLaunch(cuts);
         }
+        
     }
 
     private Vector2Int FindLargestRoom(int minRow, int maxRow, int minCol, int maxCol)
@@ -124,7 +156,8 @@ public class BspImplementation : MonoBehaviour
 
     private int GetRoomSize(int startRow, int startCol)
     {
-        bool[,] visited = new bool[rows, cols];
+        int roomSize = 0;
+        /*bool[,] visited = new bool[rows, cols];
         int roomSize = 0;
 
         Stack<Vector2Int> stack = new Stack<Vector2Int>();
@@ -147,7 +180,7 @@ public class BspImplementation : MonoBehaviour
             stack.Push(new Vector2Int(row - 1, col)); // Up
             stack.Push(new Vector2Int(row, col + 1)); // Right
             stack.Push(new Vector2Int(row, col - 1)); // Left
-        }
+        }*/
 
         return roomSize;
     }
@@ -175,11 +208,15 @@ public class BspImplementation : MonoBehaviour
     }
 }
 
-public class Salle
+
+public struct Room
 {
-    private int _width;
-    private int _height;
+    public Vector2Int position;
+    public Vector2Int size;
 
-    private int[] _center;
-
+    public Room(Vector2Int position, Vector2Int size)
+    {
+        this.position = position;
+        this.size = size;
+    }
 }
