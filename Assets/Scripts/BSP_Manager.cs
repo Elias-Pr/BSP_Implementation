@@ -2,221 +2,139 @@ using System;
 using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.Tilemaps;
-using UnityEngine.UIElements;
 using Random = System.Random;
 
 public class BspImplementation : MonoBehaviour
 {
-    /*fred implementation => S I M P L E
-     
-     [SerializeField] private Vector2Int size;
-
-    [ContextMenu("Launch")]
-    private void Launch()
-    {
-        Room startRoom = new Room(Vector2Int.zero, size);
-    }
-
-
-    int BinarySpatialPartionning(int width, int height)
-    { 
-        bool cutWidth = Random.value > 0.5f;
-        float cutPercent = Random.Range(0f, 1f);
-        int cutValue;
-        if (cutWidth)
-        {
-            cutValue = Mathf.RoundToInt(width * cutPercent);
-        }
-        else
-        {
-            cutValue = Mathf.RoundToInt(height * cutPercent);
-        }
-        return cutValue;
-    }
-     
-     */
-
-    
-    
     // VISUAL VARIABLES
     public Tile emptyTile;
     public Tile filledTile;
 
     private Tilemap _tilemap;
     private Camera _mainCamera;
-    
-
-    // MATRIX VARIABLES
-    private static Tile[,] _tileMatrix;
-
-    public int rows;
-    public int cols;
 
     // BSP VARIABLES
-    
-    public Room[,] rooms;
-    public Room currentRoom;
-    
+    public List<Room> rooms;
     public int seed;
     public int cutNumber;
-
     private int _currentCut;
-
-    // Variables to store the current bounds of the largest room
-    private int currentMinRow;
-    private int currentMaxRow;
-    private int currentMinCol;
-    private int currentMaxCol;
+    
+    private List<Vector2Int> _globalCutPositions;
+    
+    // Grid dimensions
+    public int gridWidth;
+    public int gridHeight;
 
     private void Awake()
     {
-        System.Random randomSeed = new System.Random(seed);
+        System.Random generationSeed = new System.Random(seed);
 
         _tilemap = GetComponent<Tilemap>();
         _mainCamera = FindObjectOfType<Camera>();
 
-        _tileMatrix = new Tile[rows, cols];
+        rooms = new List<Room>();
+        _globalCutPositions = new List<Vector2Int>();  // Initialize global cut position list
 
-        for (int r = 0; r < rows; r++)
-        {
-            for (int c = 0; c < cols; c++)
-            {
-                _tileMatrix[r, c] = emptyTile;
-            }
-        }
+        Room initialRoom = new Room(new Vector2Int(0, 0), new Vector2Int(gridWidth, gridHeight));
+        rooms.Add(initialRoom);
 
-        currentMinRow = 0;
-        currentMaxRow = rows - 1;
-        currentMinCol = 0;
-        currentMaxCol = cols - 1;
+        BinarySpatialPartionning(initialRoom, cutNumber);
 
-        BspLaunch(cutNumber);
         GenerateTiles();
     }
 
-    public void BspLaunch(int cuts)
+
+    public void BinarySpatialPartionning(Room room, int cuts)
     {
-        if (_currentCut < cuts)
+        if (_currentCut >= cuts) return;
+
+        bool cutHorizontal = (room.size.y > room.size.x) || (UnityEngine.Random.value > 0.5f);
+        int cutPosition;
+
+        Room room1, room2;
+
+        if (cutHorizontal)
         {
-            Vector2Int largestRoom = FindLargestRoom(currentMinRow, currentMaxRow, currentMinCol, currentMaxCol);
+            cutPosition = UnityEngine.Random.Range(1, room.size.y);
+            room1 = new Room(room.position, new Vector2Int(room.size.x, cutPosition));
+            room2 = new Room(new Vector2Int(room.position.x, room.position.y + cutPosition), new Vector2Int(room.size.x, room.size.y - cutPosition));
 
-            bool cutHorizontal = (rows > cols) || (UnityEngine.Random.value > 0.5f);
-            int cutPosition;
-
-            if (cutHorizontal)
+            for (int i = 0; i < room.size.x; i++)
             {
-                cutPosition = UnityEngine.Random.Range(currentMinRow, currentMaxRow + 1);
-                for (int c = currentMinCol; c <= currentMaxCol; c++)
-                {
-                    _tileMatrix[cutPosition, c] = filledTile;
-                }
-
-                currentMaxRow = cutPosition - 1;
+                Vector2Int cutPos = new Vector2Int(room.position.x + i, room.position.y + cutPosition - 1);
+                room1.cutPositions.Add(cutPos);
+                _globalCutPositions.Add(cutPos);
             }
-            else
-            {
-                cutPosition = UnityEngine.Random.Range(currentMinCol, currentMaxCol + 1);
-                for (int r = currentMinRow; r <= currentMaxRow; r++)
-                {
-                    _tileMatrix[r, cutPosition] = filledTile;
-                }
-
-                currentMaxCol = cutPosition - 1;
-            }
-
-            _currentCut++;
-            BspLaunch(cuts);
         }
-        
-    }
-
-    private Vector2Int FindLargestRoom(int minRow, int maxRow, int minCol, int maxCol)
-    {
-        Vector2Int largestRoom = new Vector2Int(-1, -1);
-        int largestSize = 0;
-
-        for (int r = minRow; r <= maxRow; r++)
+        else
         {
-            for (int c = minCol; c <= maxCol; c++)
+            cutPosition = UnityEngine.Random.Range(1, room.size.x);
+            room1 = new Room(room.position, new Vector2Int(cutPosition, room.size.y));
+            room2 = new Room(new Vector2Int(room.position.x + cutPosition, room.position.y), new Vector2Int(room.size.x - cutPosition, room.size.y));
+
+            for (int i = 0; i < room.size.y; i++)
             {
-                if (_tileMatrix[r, c] == emptyTile)
-                {
-                    int roomSize = GetRoomSize(r, c);
-                    if (roomSize > largestSize)
-                    {
-                        largestSize = roomSize;
-                        largestRoom.Set(r, c);
-                    }
-                }
+                Vector2Int cutPos = new Vector2Int(room.position.x + cutPosition - 1, room.position.y + i);
+                room1.cutPositions.Add(cutPos);
+                _globalCutPositions.Add(cutPos);
             }
         }
 
-        return largestRoom;
+        rooms.Add(room1);
+        rooms.Add(room2);
+
+        _currentCut++;
+
+        BinarySpatialPartionning(room1, cuts);
+        BinarySpatialPartionning(room2, cuts);
     }
 
-    private int GetRoomSize(int startRow, int startCol)
-    {
-        int roomSize = 0;
-        /*bool[,] visited = new bool[rows, cols];
-        int roomSize = 0;
 
-        Stack<Vector2Int> stack = new Stack<Vector2Int>();
-        stack.Push(new Vector2Int(startRow, startCol));
 
-        while (stack.Count > 0)
-        {
-            Vector2Int current = stack.Pop();
-            int row = current.x;
-            int col = current.y;
-
-            if (row < 0 || row >= rows || col < 0 || col >= cols || visited[row, col] || _tileMatrix[row, col] != emptyTile)
-                continue;
-
-            visited[row, col] = true;
-            roomSize++;
-
-            // Push adjacent cells
-            stack.Push(new Vector2Int(row + 1, col)); // Down
-            stack.Push(new Vector2Int(row - 1, col)); // Up
-            stack.Push(new Vector2Int(row, col + 1)); // Right
-            stack.Push(new Vector2Int(row, col - 1)); // Left
-        }*/
-
-        return roomSize;
-    }
 
     private void GenerateTiles()
     {
         Vector3 cameraPosition = _mainCamera.transform.position;
 
-        float gridWidth = cols * _tilemap.cellSize.x;
-        float gridHeight = rows * _tilemap.cellSize.y;
+        float totalGridWidth = gridWidth * _tilemap.cellSize.x;
+        float totalGridHeight = gridHeight * _tilemap.cellSize.y;
 
-        Vector3 gridOffset = new Vector3(cameraPosition.x - gridWidth / 2, cameraPosition.y + gridHeight / 2, 0);
+        Vector3 gridOffset = new Vector3(cameraPosition.x - totalGridWidth / 2, cameraPosition.y + totalGridHeight / 2, 0);
 
-        for (int r = 0; r < rows; r++)
+        foreach (var room in rooms)
         {
-            for (int c = 0; c < cols; c++)
+            for (int r = 0; r < room.size.y; r++)
             {
-                Tile currentTile = _tileMatrix[r, c];
+                for (int c = 0; c < room.size.x; c++)
+                {
+                    Vector3Int tilePosition = _tilemap.WorldToCell(new Vector3((room.position.x + c) * _tilemap.cellSize.x, -(room.position.y + r) * _tilemap.cellSize.y, 0) + gridOffset);
 
-                Vector3Int tilePosition = _tilemap.WorldToCell(new Vector3(c * _tilemap.cellSize.x, -r * _tilemap.cellSize.y, 0) + gridOffset);
-
-                _tilemap.SetTile(tilePosition, currentTile);
+                    _tilemap.SetTile(tilePosition, emptyTile);
+                }
             }
         }
+
+        foreach (var cutPosition in _globalCutPositions)
+        {
+            Vector3Int tilePosition = _tilemap.WorldToCell(new Vector3(cutPosition.x * _tilemap.cellSize.x, -cutPosition.y * _tilemap.cellSize.y, 0) + gridOffset);
+            _tilemap.SetTile(tilePosition, filledTile);
+        }
     }
+
+
+
 }
 
-
-public struct Room
+public class Room
 {
     public Vector2Int position;
     public Vector2Int size;
+    public List<Vector2Int> cutPositions;  // Store cut positions
 
     public Room(Vector2Int position, Vector2Int size)
     {
         this.position = position;
         this.size = size;
+        this.cutPositions = new List<Vector2Int>(); // Initialize the list
     }
 }
