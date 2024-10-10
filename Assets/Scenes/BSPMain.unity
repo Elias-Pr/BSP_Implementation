@@ -262,10 +262,11 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   emptyTile: {fileID: 11400000, guid: 26dd2e071ee78ed4c8754a8b16b85dc9, type: 2}
   filledTile: {fileID: 11400000, guid: fe574ade5117a374f96316bf11ac274e, type: 2}
-  seed: 3
-  cutNumber: 5
   gridWidth: 100
   gridHeight: 50
+  seed: 2
+  cutDepth: 7
+  centerPoint: {fileID: 8132810981301769745, guid: 52dbca54489ec9c45bbd2fad4fcbdf4f, type: 3}
 --- !u!483693784 &845553837
 TilemapRenderer:
   m_ObjectHideFlags: 0
