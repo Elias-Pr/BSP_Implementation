@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using System.Linq;
 using UnityEngine;
 using Unity.Mathematics;
 using UnityEngine.Tilemaps;
@@ -12,7 +13,7 @@ public class BspImplementation : MonoBehaviour
     private Camera _mainCamera;
     public int gridWidth;
     public int gridHeight;
-    
+
     // BSP VARIABLES
     public List<Room> Rooms;
     public int seed;
@@ -20,11 +21,11 @@ public class BspImplementation : MonoBehaviour
     private int _currentCut;
     private List<Vector2Int> _globalCutPositions;
     private System.Random _generationSeed;
-    
+
     //DELAUNAY VARIABLES
     public GameObject superTrianglePSummit;
     public GameObject centerPoint;
-    
+
     private void Awake() {
         UnityEngine.Random.InitState(seed);
 
@@ -47,8 +48,6 @@ public class BspImplementation : MonoBehaviour
         DelaunayTriangulation();
         GenerateTiles();
     }
-
-
 
     public void BinarySpatialPartionning(Room room, int depth) {
         if (_currentCut >= depth) return;
@@ -92,16 +91,14 @@ public class BspImplementation : MonoBehaviour
         BinarySpatialPartionning(randomRoom, depth);
     }
 
-
     private void DelaunayTriangulation() {
-        
         List<Vector2> superTriangleVertex = new List<Vector2>();
         List<Vector2> centerPoints = new List<Vector2>();
-        
+
         LineIntersection lineIntersection;
-        
+
         lineIntersection = new LineIntersection(new Vector2(gridWidth/2f, gridHeight/2f),0,-gridHeight/2f, -45);
-        
+
         // Convert angle from degrees to radians and calculate the slope
         float slope = Mathf.Tan(lineIntersection.AngleDegrees * Mathf.Deg2Rad);
 
@@ -113,7 +110,7 @@ public class BspImplementation : MonoBehaviour
 
         // Find the x value when y reaches targetY
         float xAtTargetY = (lineIntersection.TargetY - intercept) / slope;
-        
+
         Vector2 vertex1 = new Vector2(0, yAtTargetX);
         superTriangleVertex.Add(vertex1);
 
@@ -127,20 +124,111 @@ public class BspImplementation : MonoBehaviour
         {
             Instantiate(superTrianglePSummit, point, Quaternion.identity);
         }
-        
+
         foreach (Room room in Rooms) {
-            Instantiate(centerPoint, new Vector3(room.CenterPosition.x, room.CenterPosition.y, 0), quaternion.identity);
+            Instantiate(centerPoint, new Vector3(room.CenterPosition.x, room.CenterPosition.y, 0), Quaternion.identity);
             centerPoints.Add(room.CenterPosition);
         }
-        
+
+        List<Triangle> triangles = BowyerWatson(superTriangleVertex, centerPoints);
+
+        // Visualize the triangles
+        foreach (var triangle in triangles) {
+            VisualizeTriangle(triangle);
+        }
     }
 
-    
+    private List<Triangle> BowyerWatson(List<Vector2> superTriangleVertices, List<Vector2> points) {
+        List<Triangle> triangles = new List<Triangle> {
+            new Triangle(superTriangleVertices[0], superTriangleVertices[1], superTriangleVertices[2])
+        };
+
+        foreach (Vector2 point in points) {
+            List<Triangle> badTriangles = new List<Triangle>();
+
+            // Identify bad triangles
+            foreach (var triangle in triangles) {
+                if (IsPointInsideCircumcircle(triangle, point)) {
+                    badTriangles.Add(triangle);
+                }
+            }
+
+            List<Edge> polygon = new List<Edge>();
+
+            // Remove bad triangles and create the polygon
+            foreach (var badTriangle in badTriangles) {
+                triangles.Remove(badTriangle);
+
+                foreach (var edge in badTriangle.Edges) {
+                    bool shared = false;
+
+                    // Check if edge is shared with any other bad triangle
+                    foreach (var otherBadTriangle in badTriangles) {
+                        if (badTriangle != otherBadTriangle && otherBadTriangle.Edges.Contains(edge)) {
+                            shared = true;
+                            break;
+                        }
+                    }
+
+                    // If edge is not shared, add to polygon
+                    if (!shared) {
+                        polygon.Add(edge);
+                    }
+                }
+            }
+
+            // Create new triangles from the polygon edges
+            foreach (var edge in polygon) {
+                triangles.Add(new Triangle(edge.Start, edge.End, point));
+            }
+        }
+
+        // Filter out triangles that contain vertices of the super triangle
+        List<Triangle> finalTriangles = new List<Triangle>();
+        foreach (var triangle in triangles) {
+            if (!triangle.Vertices.Any(v => superTriangleVertices.Contains(v))) {
+                finalTriangles.Add(triangle);
+            }
+        }
+
+        return finalTriangles;
+    }
+
+
+    private bool IsPointInsideCircumcircle(Triangle triangle, Vector2 point) {
+        Vector2 a = triangle.Vertices[0];
+        Vector2 b = triangle.Vertices[1];
+        Vector2 c = triangle.Vertices[2];
+
+        float ax = a.x - point.x;
+        float ay = a.y - point.y;
+        float bx = b.x - point.x;
+        float by = b.y - point.y;
+        float cx = c.x - point.x;
+        float cy = c.y - point.y;
+
+        float aSquare = ax * ax + ay * ay;
+        float bSquare = bx * bx + by * by;
+        float cSquare = cx * cx + cy * cy;
+
+        float determinant = (ax * (by - cy) + bx * (cy - ay) + cx * (ay - by));
+
+        return (aSquare * (by - cy) + bSquare * (cy - ay) + cSquare * (ay - by)) > determinant;
+    }
+
+    private void VisualizeTriangle(Triangle triangle) {
+        for (int i = 0; i < 3; i++) {
+            Vector2 start = triangle.Vertices[i];
+            Vector2 end = triangle.Vertices[(i + 1) % 3];
+            Debug.DrawLine(start, end, Color.red, 100f);
+        }
+    }
+
     private void GenerateTiles() {
         foreach (var room in Rooms) {
             for (int row = 0; row < room.Size.y; row++) {
                 for (int col = 0; col < room.Size.x; col++) {
-                    Vector3Int tilePosition = _tilemap.WorldToCell(new Vector3((room.Position.x 
+                    Vector3Int tilePosition = _tilemap.WorldToCell(new Vector3((room.Position.x
                         + col) * _tilemap.cellSize.x, (room.Position.y + row) * _tilemap.cellSize.y, 0));
                     _tilemap.SetTile(tilePosition, emptyTile);
                 }
@@ -148,7 +236,7 @@ public class BspImplementation : MonoBehaviour
         }
 
         foreach (var cutPosition in _globalCutPositions) {
-            Vector3Int tilePosition = _tilemap.WorldToCell(new Vector3(cutPosition.x * _tilemap.cellSize.x, 
+            Vector3Int tilePosition = _tilemap.WorldToCell(new Vector3(cutPosition.x * _tilemap.cellSize.x,
                 cutPosition.y * _tilemap.cellSize.y, 0));
             _tilemap.SetTile(tilePosition, filledTile);
         }
@@ -172,8 +260,8 @@ public class Room {
 public class LineIntersection
 {
     public Vector2 StartPoint;
-    public float TargetX;       
-    public float TargetY;       
+    public float TargetX;
+    public float TargetY;
     public float AngleDegrees;
 
     public LineIntersection(Vector2 startPoint, float targetX, float targetY, float angleDegrees)
@@ -182,5 +270,41 @@ public class LineIntersection
         TargetX = targetX;
         TargetY = targetY;
         AngleDegrees = angleDegrees;
+    }
+}
+
+public class Triangle {
+    public List<Vector2> Vertices;
+    public List<Edge> Edges;
+
+    public Triangle(Vector2 a, Vector2 b, Vector2 c) {
+        Vertices = new List<Vector2> { a, b, c };
+        Edges = new List<Edge> {
+            new Edge(a, b),
+            new Edge(b, c),
+            new Edge(c, a)
+        };
+    }
+}
+
+public class Edge {
+    public Vector2 Start;
+    public Vector2 End;
+
+    public Edge(Vector2 start, Vector2 end) {
+        Start = start;
+        End = end;
+    }
+
+    public override bool Equals(object obj) {
+        if (obj is Edge otherEdge) {
+            return (Start == otherEdge.Start && End == otherEdge.End) ||
+                   (Start == otherEdge.End && End == otherEdge.Start);
+        }
+        return false;
+    }
+
+    public override int GetHashCode() {
+        return Start.GetHashCode() ^ End.GetHashCode();
     }
 }

@@ -263,7 +263,7 @@ MonoBehaviour:
   emptyTile: {fileID: 11400000, guid: 26dd2e071ee78ed4c8754a8b16b85dc9, type: 2}
   filledTile: {fileID: 11400000, guid: fe574ade5117a374f96316bf11ac274e, type: 2}
   gridWidth: 100
-  gridHeight: 100
+  gridHeight: 50
   seed: 2
   cutDepth: 7
   superTrianglePSummit: {fileID: 2098887339302140403, guid: c2b38942909ce0b4aa706d5279ccc322, type: 3}
