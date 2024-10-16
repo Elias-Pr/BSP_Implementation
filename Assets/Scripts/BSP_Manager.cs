@@ -87,7 +87,6 @@ public class BspImplementation : MonoBehaviour
         }
 
         Rooms.Remove(room);
-
         Rooms.Add(room1);
         Rooms.Add(room2);
 
@@ -116,14 +115,10 @@ public class BspImplementation : MonoBehaviour
 
         RemoveUnwantedEdges(triangles, superTriangleVertex);
 
-        foreach (var triangle in triangles)
-        {
-            VisualizeTriangle(triangle);
-        }
-
         List<Edge> edges = new List<Edge>();
         foreach (var triangle in triangles)
         {
+            VisualizeTriangle(triangle);
             edges.AddRange(triangle.Edges);
         }
 
@@ -147,7 +142,6 @@ public class BspImplementation : MonoBehaviour
         {
             List<Triangle> badTriangles = new List<Triangle>();
 
-            // Find all triangles that no longer satisfy the Delaunay condition
             foreach (var triangle in triangles)
             {
                 if (IsPointInsideCircumcircle(point, triangle))
@@ -158,7 +152,6 @@ public class BspImplementation : MonoBehaviour
 
             List<Edge> polygon = new List<Edge>();
 
-            // Remove bad triangles and build a polygon of the remaining edges
             foreach (var badTriangle in badTriangles)
             {
                 triangles.Remove(badTriangle);
@@ -280,6 +273,8 @@ public class BspImplementation : MonoBehaviour
             _tilemap.SetTile(tilePosition, filledTile);
         }
     }
+    
+    
 }
 
 public class Room
