@@ -167,7 +167,6 @@ public class BspImplementation : MonoBehaviour
                 }
             }
 
-            // Re-triangulate the polygon by connecting each edge with the new point
             foreach (var edge in polygon)
             {
                 triangles.Add(new Triangle(edge.Start, edge.End, point));
