@@ -128,7 +128,7 @@ public class BspImplementation : MonoBehaviour
 
         foreach (var edge in mstEdges)
         {
-            VisualizeEdge(edge, Color.green);
+            VisualizeEdge(edge);
         }
     }
 
@@ -178,7 +178,7 @@ public class BspImplementation : MonoBehaviour
 
     private List<Edge> KruskalAlgorithm(List<Edge> edges)
     {
-        List<Edge> mstEdges = new List<Edge>();
+        List<Edge> kruskalEdges = new List<Edge>();
         DisjointSet disjointSet = new DisjointSet();
 
         foreach (var edge in edges)
@@ -193,12 +193,12 @@ public class BspImplementation : MonoBehaviour
         {
             if (disjointSet.FindSet(edge.Start) != disjointSet.FindSet(edge.End))
             {
-                mstEdges.Add(edge);
+                kruskalEdges.Add(edge);
                 disjointSet.Union(edge.Start, edge.End);
             }
         }
 
-        return mstEdges;
+        return kruskalEdges;
     }
     
     private void RemoveUnwantedEdges(List<Triangle> triangles, List<Vector2> superTriangleVertices)
@@ -245,9 +245,9 @@ public class BspImplementation : MonoBehaviour
         }
     }
 
-    private void VisualizeEdge(Edge edge, Color color)
+    private void VisualizeEdge(Edge edge)
     {
-        Debug.DrawLine(edge.Start, edge.End, color, 100f);
+        Debug.DrawLine(edge.Start, edge.End, Color.green, 100f);
     }
     
     private void GenerateTiles()
