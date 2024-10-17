@@ -178,7 +178,7 @@ public class BspImplementation : MonoBehaviour
 
     private List<Edge> KruskalAlgorithm(List<Edge> edges)
     {
-        List<Edge> kruskalEdges = new List<Edge>();
+        List<Edge> mstEdges = new List<Edge>();
         DisjointSet disjointSet = new DisjointSet();
 
         foreach (var edge in edges)
@@ -193,12 +193,12 @@ public class BspImplementation : MonoBehaviour
         {
             if (disjointSet.FindSet(edge.Start) != disjointSet.FindSet(edge.End))
             {
-                kruskalEdges.Add(edge);
+                mstEdges.Add(edge);
                 disjointSet.Union(edge.Start, edge.End);
             }
         }
 
-        return kruskalEdges;
+        return mstEdges;
     }
     
     private void RemoveUnwantedEdges(List<Triangle> triangles, List<Vector2> superTriangleVertices)
