@@ -328,11 +328,6 @@ public class Edge
         }
         return false;
     }
-
-    public override int GetHashCode()
-    {
-        return Start.GetHashCode() ^ End.GetHashCode();
-    }
 }
 
 public class DisjointSet
